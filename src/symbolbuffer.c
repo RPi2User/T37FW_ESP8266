@@ -2,112 +2,127 @@
 #include <string.h>
 #include "symbolbuffer.h"
 
-void TTY_raiseMemoryError(void);
-
-uint32_t sbf_len(sbf_t sbf){
-	uint32_t len = 0;
-	if (sbf == NULL) return 0;
-	while (sbf[len] != SBF_TERMINATOR) {
-		len++;
-	}
-	return len;
+uint32_t sbf_len(){
+	uint32_t out = 0;
+	while(sbf_main[out] != SBF_TERMINATOR) out++;
+	return out;
 }
 
-sbf_t sbf_appendSym(sbf_t head, symbol_t sym){
-	if (head == NULL) {
-		return NULL;
-	}
+void sbf_appendSym(symbol_t sym){
+	uint32_t len = sbf_len(sbf_main);
 
-	uint32_t len = sbf_len(head);
-	if (len >= (SBF_MAIN_SIZE - 1)) {
-		return head;
-	}
+	if (len >= (SBF_MAIN_SIZE - 1))
+		len = 0;	// roll over to first position
 
-	head[len] = sym;
-	head[len + 1] = SBF_TERMINATOR;
-	return head;
+	sbf_main[len] = sym;
+	sbf_main[len + 1] = SBF_TERMINATOR;
 }
 
-sbf_t sbf_concaternate(sbf_t head, sbf_t tail, uint8_t keepTail){
-	if (head == NULL) {
-		return NULL;
+/*	Convert: symbol to char
+ * 	This conversion needs a lot of contextual data. Hence why the
+ * 	function head is that cluttered.
+ *
+ * 	This function returns:
+ *  - 2 when line-terminator should be appended
+ *  - 1 when the char is successfully converted
+ *  - 0 when it sym is a "dead key" like a ltrs or figs
+ *  - -1 when a conversion error occurred
+ *
+ * char* target is a string with two chars.
+ * it either contains the desired char on target[0] OR the specified Line termination (which can be up to 2 chars long)
+ * hence the return code contains the length of *target
+ */
+int8_t sbf_convertToChar(symbol_t symbol, char* target, char* _newLine,
+   uint8_t* current_mode, uint32_t* carriage_pos, uint32_t* last_lf){
+
+	if (symbol == -1) {
+		return -1;
+	}
+	if (symbol == lf) *last_lf = 0;
+	else *last_lf = 1;
+
+	// Handle common symbols
+	switch(symbol){
+		case cr: *carriage_pos = 0; *target = 0x0D; return 1;
+		case space: (*carriage_pos)++; *target = ' '; return 1;
+		case ltrs: *current_mode = TTY_LETTERS; return 0;
+		case figs: *current_mode = TTY_FIGURES; return 0;
 	}
 
-	uint32_t head_len = sbf_len(head);
-	uint32_t tail_len = sbf_len(tail);
-	uint32_t free_slots = (SBF_MAIN_SIZE - 1) - head_len;
-	if (tail_len > free_slots) {
-		tail_len = free_slots;
+	/*
+	 * There are three valid cases for a new-line Insertion.
+	 *  1. "CR LF"
+	 *  2. "LF CR"
+	 *  3. multiple "LF" (only works on carriage == 0)
+	 */
+
+	// case 1 "lfcr"
+	if (*last_lf == 0 && symbol == cr){
+		*carriage_pos = 0;
+		*last_lf = 0;
+		target = _newLine;		// 'return' new-Line Pointer
+		return 2;
 	}
-	memcpy(&head[head_len], tail, tail_len * sizeof(symbol_t));
-	head[head_len + tail_len] = SBF_TERMINATOR;
-	if (keepTail == 0) {
+
+	// case 2 "crlf" AND case 3 "crlflflflf..."
+	if (*carriage_pos == 0 && symbol == lf){
+		*carriage_pos = 0;
+		*last_lf = 0;
+		target = _newLine;		// 'return' new-Line Pointer
+		return 2;
 	}
-	return head;
+
+	if (symbol == lf) return 0;
+
+	if (*current_mode == TTY_LETTERS){
+		*target = ltrs_to_char[symbol];
+		(*carriage_pos)++;
+		return 1;
+	}
+	else {
+		*target = figs_to_char[symbol];
+		(*carriage_pos)++;
+		return 1;
+	}
+
+	return -1;	// If no-one returns there is an unpredictable error
 }
 
-symbol_t sbf_convertToChar(symbol_t symbol, char* target, char* _newLine, tty_mode_t* current_mode, uint32_t* carriage_pos, uint32_t* last_lf){
-	(void)_newLine;
-	(void)carriage_pos;
-	(void)last_lf;
-
-	if (target == NULL) {
-		return symbol;
-	}
-
-	tty_mode_t mode = (current_mode != NULL) ? *current_mode : TTY_LETTERS;
-
-	if (symbol == cr) {
-		*target = '\r';
-		return symbol;
-	}
-
-	if (symbol == lf) {
-		*target = '\n';
-		return symbol;
-	}
-
-	if (mode == TTY_LETTERS && symbol >= 0 && symbol < 32) {
-		*target = ltrs_to_char[(uint8_t)symbol];
-		return symbol;
-	}
-
-	if (mode == TTY_FIGURES && symbol >= 0 && symbol < 32) {
-		*target = figs_to_char[(uint8_t)symbol];
-		return symbol;
-	}
-
-	*target = (char)symbol;
-	return symbol;
-}
-
-sbf_t sbf_charToSymbolBuffer(sbf_t _out, char _c, tty_mode_t* _currentMode){
-	symbol_t sym = SBF_TERMINATOR;
-	unsigned char uc = (unsigned char)_c;
-
-	if (_currentMode == NULL) {
-		return _out;
-	}
-
-	if (_c == '\r') {
-		sym = cr;
-	} else if (_c == '\n') {
-		sym = lf;
-	} else if (*_currentMode == TTY_FIGURES) {
-		sym = char_to_symFIGS[uc];
-	} else {
-		sym = char_to_symLTRS[(unsigned char)toupper(uc)];
-		if (sym == 0) {
-			sym = char_to_symCommon[uc];
+void sbf_charToSymbolBuffer(char _c, tty_mode_t* _currentMode){
+	// handle special chars
+	if (_c <= 0x20){
+		if (_c == 0x09){	// tab? -> append TAB_WIDTH-many spaces
+			for (uint8_t t = 0; t < 4; t++)
+				sbf_appendSym(space);
 		}
+		if(_c == 0x0A) sbf_appendSym(lf);	// \n? -> append LineFeed
+		if(_c == 0x0C){	// FormFeed? -> Append 10 Lines
+			sbf_appendSym(cr);
+			for (uint8_t f = 0; f < 10; f++)
+				sbf_appendSym(lf);
+		}
+		if(_c == 0x0D) _sbf_appendSym(cr);	// \r? -> CarriageReturn
+		if(_c == 0x20) _sbf_appendSym(space);	// space
 	}
-
-	if (sym == 0) {
-		sym = char_to_symCommon[uc];
+	// Handle all !Letters and !special chars -> Handle all FIGS
+	if ((_c > 0x20 && _c < 'A') || _c == 0x07 || _c > 'z'){
+		if (*_currentMode != TTY_FIGURES){
+			sbf_appendSym(figs);
+			*_currentMode = TTY_FIGURES;
+		}
+		sbf_appendSym(char_to_symFIGS[(uint8_t)_c]);
 	}
-
-	return sbf_appendSym(_out, sym);
+	// Handle all Letters
+	if (_c >= 'A' && _c <= 'z'){
+		if (*_currentMode != TTY_LETTERS){
+			sbf_appendSym(ltrs);
+			*_currentMode = TTY_LETTERS;
+		}
+		sbf_appendSym(char_to_symLTRS[(uint8_t)_c]);
+	}
 }
+
+// --- AI Stuff following -------
 
 char* sbf_convertToString(sbf_t _inSbf, char* _outStr, uint16_t outSize, char* _newLine){
 	if (_outStr == NULL || outSize == 0) {
@@ -127,17 +142,12 @@ char* sbf_convertToString(sbf_t _inSbf, char* _outStr, uint16_t outSize, char* _
 	return _outStr;
 }
 
-sbf_t sbf_convertToSymbolBuffer(char* _inStr, sbf_t _out){
+void sbf_convertToSymbolBuffer(char* _inStr, sbf_t _out){
 	tty_mode_t mode = TTY_LETTERS;
-	if (_out == NULL) {
-		return NULL;
-	}
-	_out[0] = SBF_TERMINATOR;
-	if (_inStr == NULL) {
-		return _out;
-	}
+
+	sbf_main[0] = SBF_TERMINATOR;
+
 	for (size_t i = 0; _inStr[i] != '\0'; i++) {
-		_out = sbf_charToSymbolBuffer(_out, _inStr[i], &mode);
+		sbf_charToSymbolBuffer(_inStr[i], &mode);
 	}
-	return _out;
 }

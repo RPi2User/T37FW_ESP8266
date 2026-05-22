@@ -7,6 +7,7 @@
 // Hardware Variables
 uint8_t TTY_SEND = D5;
 uint8_t TTY_RECV = D0;
+uint8_t TTY_READ_INHIBIT = A0;
 
 float baudrate = 50.0;		// default values
 uint32_t lineWidth = 70;
