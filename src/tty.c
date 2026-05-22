@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Arduino.h"
-#include <user_interface.h>
 #include "tty.h"
 #include "symbolbuffer.h"
 
 // Hardware Variables
-uint8_t TTY_SEND = D5;	// TTY @ D5
+uint8_t TTY_SEND = D5;
 uint8_t TTY_RECV = D0;
 
 float baudrate = 50.0;		// default values
@@ -85,8 +84,7 @@ void TTY_WriteString(char* str, uint8_t keepStr){
 }
 
 void TTY_WriteKey(char key){
-	sbf_main[0] = SBF_TERMINATOR;
-	sbf_charToSymbolBuffer(sbf_main, key, &tty_mode);
+	sbf_charToSymbolBuffer(key, &tty_mode);
 	TTY_WriteBuffer(sbf_main);
 }
 
@@ -182,7 +180,6 @@ symbol_t readSymbol() {
 
     clearReadError();
 
-    //HAL_Delay(10);	// Stobbit should be <20ms
     return out;
 }
 

@@ -7,9 +7,6 @@
 extern "C" {
 #endif
 
-extern char str_main[STR_MAIN_SIZE];
-extern symbol_t sbf_main[SBF_MAIN_SIZE];
-extern sbf_t currentLine;
 
 void TTY_Init(void);
 

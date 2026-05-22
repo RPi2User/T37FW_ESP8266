@@ -17,6 +17,9 @@ typedef int8_t* sbf_t;
 #define SBF_MAIN_SIZE 300
 
 extern const symbol_t SBF_TERMINATOR;	// shows end of symbol buffer (sbf)
+extern char str_main[STR_MAIN_SIZE];
+extern symbol_t sbf_main[SBF_MAIN_SIZE];
+extern sbf_t currentLine;
 
 typedef enum {
     TTY_LETTERS = 0,
