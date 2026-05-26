@@ -7,7 +7,7 @@
 // Hardware Variables
 uint8_t TTY_SEND = D5;
 uint8_t TTY_RECV = D0;
-uint8_t TTY_READ_INHIBIT = A0;
+uint8_t TTY_READ_INHIBIT = A0;	// this was the SYSTEM_BSY LED, operator shall not expect their input to be parsed correctly
 
 float baudrate = 50.0;		// default values
 uint32_t lineWidth = 70;
