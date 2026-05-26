@@ -37,6 +37,31 @@ typedef struct { //TODO make this uint8_t pls
     int s3;
 } Databit;
 
+
+typedef enum {
+	NOT_INIT = -1,
+	TO_VER1_0 = 10
+} E_InitState;
+
+typedef struct {
+	// PIN Definitions
+	uint8_t TTY_SEND;
+	uint8_t TTY_RECV;
+	uint8_t TTY_READ_INHIBIT;
+
+	// Serial properties
+	float baudrate;
+	float stopbit_cnt;
+
+	// Typing
+	uint8_t linewidth;
+	E_lettercase lettercase;
+	uint8_t tabWidth;
+
+	// READ-COMPLETE Flag 
+	E_InitState loadState;
+} Teletype;
+
 typedef enum {
 	// Letters
 	a = 3,
