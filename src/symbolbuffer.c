@@ -32,8 +32,7 @@ void sbf_appendSym(symbol_t sym){
  * it either contains the desired char on target[0] OR the specified Line termination (which can be up to 2 chars long)
  * hence the return code contains the length of *target
  */
-int8_t sbf_convertToChar(symbol_t symbol, char* target, char* _newLine,
-   uint8_t* current_mode, uint32_t* carriage_pos, uint32_t* last_lf){
+int8_t sbf_convertToChar(symbol_t symbol, char* target, char* _newLine, tty_mode_t* current_mode, uint32_t* carriage_pos, uint32_t* last_lf){
 
 	if (symbol == -1) {
 		return -1;
@@ -101,8 +100,8 @@ void sbf_charToSymbolBuffer(char _c, tty_mode_t* _currentMode){
 			for (uint8_t f = 0; f < 10; f++)
 				sbf_appendSym(lf);
 		}
-		if(_c == 0x0D) _sbf_appendSym(cr);	// \r? -> CarriageReturn
-		if(_c == 0x20) _sbf_appendSym(space);	// space
+		if(_c == 0x0D) sbf_appendSym(cr);	// \r? -> CarriageReturn
+		if(_c == 0x20) sbf_appendSym(space);	// space
 	}
 	// Handle all !Letters and !special chars -> Handle all FIGS
 	if ((_c > 0x20 && _c < 'A') || _c == 0x07 || _c > 'z'){
