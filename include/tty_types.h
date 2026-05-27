@@ -2,7 +2,7 @@
  * tty_types.h
  *
  *  Created on: Oct 9, 2025
- *      Author: florian
+ *      Author: RPi2User
  */
 
 #include <stdint.h>
@@ -49,14 +49,23 @@ typedef struct {
 	uint8_t TTY_RECV;
 	uint8_t TTY_READ_INHIBIT;
 
+	//idea: uint8_t TTY_INVERT_TX; // This one inverts the OUTPUT 
+	// uint8_t TTY_INVERT_RX; // This one inverts the INPUT
+
 	// Serial properties
 	float baudrate;
 	float stopbit_cnt;
+	uint8_t loopback;
 
 	// Typing
 	uint8_t linewidth;
 	E_lettercase lettercase;
 	uint8_t tabWidth;
+	tty_mode_t tty_mode;
+
+	// state vars
+	uint32_t last_linefeed;		// why not 8bit? -> len(sbf_main) := 300 Byte
+	uint32_t carriage_pos;
 
 	// READ-COMPLETE Flag 
 	E_InitState loadState;

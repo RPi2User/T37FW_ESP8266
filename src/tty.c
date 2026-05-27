@@ -4,16 +4,7 @@
 #include "tty.h"
 #include "symbolbuffer.h"
 
-// Hardware Variables
-uint8_t TTY_SEND = D5;
-uint8_t TTY_RECV = D0;
-uint8_t TTY_READ_INHIBIT = A0;	// this was the SYSTEM_BSY LED, operator shall not expect their input to be parsed correctly
-
-float baudrate = 50.0;		// default values
-uint32_t lineWidth = 70;
-E_lettercase lettercase = LOWERCASE;
-float stopbit_cnt = 1.5;
-uint8_t tabSize = 2;
+Teletype tty;
 
 // shared buffers
 char str_main[STR_MAIN_SIZE];
@@ -21,13 +12,9 @@ symbol_t sbf_main[SBF_MAIN_SIZE];
 const symbol_t SBF_TERMINATOR = -1;
 
 sbf_t currentLine;
-uint32_t last_linefeed = 0;
-uint32_t carriage_pos = 0;
-tty_mode_t tty_mode = TTY_LETTERS;
 
 // System variables
 uint8_t emerg_cnt = 0;		// Emergency Counter, reserved on stack
-uint8_t loopback = 0;		// This sends bit right back to TTY
 uint8_t READ_TIMEOUT = 100;	// Timeout of 1000ms
 
 char* fox = "\r\nthe quick brown fox jumps over the lazy dog";
@@ -73,7 +60,6 @@ void TTY_Fox(void){
 
 }
 
-
 // === WRITE SECTION ===============================================
 void TTY_WriteString(char* str, uint8_t keepStr){
     // MAIN WRITE FUNCTION
@@ -85,7 +71,7 @@ void TTY_WriteString(char* str, uint8_t keepStr){
 }
 
 void TTY_WriteKey(char key){
-	sbf_charToSymbolBuffer(key, &tty_mode);
+	sbf_charToSymbolBuffer(key, &tty.tty_mode);
 	TTY_WriteBuffer(sbf_main);
 }
 
@@ -131,7 +117,7 @@ char TTY_ReadKey(){
 	int sym = readSymbol();
 	char _out = -1;
 	sbf_convertToChar(sym, &_out, "\r\n",
-		&tty_mode, &carriage_pos, &last_linefeed);
+		&tty.tty_mode, &tty.carriage_pos, &tty.last_linefeed);	// make that one accept the tty struct
 
 	return _out;
 }
@@ -184,10 +170,8 @@ symbol_t readSymbol() {
     return out;
 }
 
-
-
 // === System Functions ============================================
-void TTY_raiseMemoryError(void){
+void TTY_raiseMemoryError(void){	// Deprecate that one
 	/* Oh no. you managed to see this :c
 	 * I'm very sorry for seeing that you got a Memory error.
 	 * This function get Called when your Heap is full/corrupted
@@ -205,22 +189,22 @@ void TTY_raiseMemoryError(void){
 }
 
 void setTTY(uint8_t state){			// TTY @ D5
-	digitalWrite(TTY_SEND, 
+	digitalWrite(tty.TTY_SEND, 
 		state ? HIGH : LOW);
 }
 
 int8_t readTTY(){
 	int8_t out = -1;
-	out =  digitalRead(D0) ?	// invert high/low for this chip
+	out =  digitalRead(tty.TTY_RECV) ?	// invert high/low for this chip
          HIGH : LOW;
-	if (loopback != 0) setTTY(out);
+	if (tty.loopback != 0) setTTY(out);
 	return out;
 }
 
-void setLoopback(uint8_t _loopback) {loopback = _loopback;}
-void setBaudrate(float baudrate) {baudrate = baudrate;}
-void setTermWidth(uint8_t termwidth) {lineWidth = termwidth;}
-void setStopbits(float stopbit) {stopbit_cnt = stopbit;}
+void setLoopback(uint8_t _loopback) {tty.loopback = _loopback;}
+void setBaudrate(float baudrate) {tty.baudrate = baudrate;}
+void setTermWidth(uint8_t termwidth) {tty.linewidth = termwidth;}
+void setStopbits(float stopbit) {tty.stopbit_cnt = stopbit;}
 // TODO add Lower/Uppercase "switch"
 
 
@@ -243,7 +227,7 @@ void TTY_DelayMS(uint32_t ms){
 }
 
 void TTY_Delay(float cycles){
-	uint32_t delay_ms = (cycles * ( 1000 / baudrate));
+	uint32_t delay_ms = (cycles * ( 1000 / tty.baudrate));
 	TTY_DelayMS(delay_ms);
 }
 
@@ -254,5 +238,5 @@ void TTY_Startbit(){
 
 void TTY_Stopbit(){
 	setTTY(0);
-	TTY_Delay(stopbit_cnt);
+	TTY_Delay(tty.stopbit_cnt);
 }

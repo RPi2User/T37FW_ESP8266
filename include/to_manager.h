@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-void TO_storeDefault(Teletype* t);
+void TO_storeDefault();
 void TO_storeTTY_Object(const Teletype* t);
 void TO_readTTY_Object(Teletype* t);
 
