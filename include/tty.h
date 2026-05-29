@@ -21,10 +21,7 @@ void TTY_WriteSymbol(symbol_t _sym);
 char TTY_ReadKey();
 symbol_t readSymbol();
 
-
-void TTY_raiseMemoryError(void);
-
-void setLoopback(uint8_t _loopback);
+void setLoopback(loopback_mode_t _loopback);
 void setBaudrate(float baudrate);
 void setTermWidth(uint8_t termwidth);
 void setStopbits(float stopbit);

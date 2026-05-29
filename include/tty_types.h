@@ -22,6 +22,12 @@ extern symbol_t sbf_main[SBF_MAIN_SIZE];
 extern sbf_t currentLine;
 
 typedef enum {
+	LOOPBACK_NONE = 0,	// no loopback
+	LOOPBACK_NORM = 1,	// bit-level loopback
+	LOOPBACK_SLOW = 2	// symbol-based loopback (read entire symbol and echo it back)
+} loopback_mode_t;
+
+typedef enum {
     TTY_LETTERS = 0,
     TTY_FIGURES = 1
 } tty_mode_t;
@@ -55,7 +61,7 @@ typedef struct {
 	// Serial properties
 	float baudrate;
 	float stopbit_cnt;
-	uint8_t loopback;
+	loopback_mode_t loopback;
 
 	// Typing
 	uint8_t linewidth;

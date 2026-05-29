@@ -11,13 +11,18 @@ char str_main[STR_MAIN_SIZE];
 symbol_t sbf_main[SBF_MAIN_SIZE];
 const symbol_t SBF_TERMINATOR = -1;
 
-sbf_t currentLine;
-
 // System variables
-uint8_t emerg_cnt = 0;		// Emergency Counter, reserved on stack
 uint8_t READ_TIMEOUT = 100;	// Timeout of 1000ms
 
 char* fox = "\r\nthe quick brown fox jumps over the lazy dog";
+
+const symbol_t SBF_DEFAULTS_LOADED[] = {
+	cr, lf, figs, bell, ltrs, 
+	d, e, f, a, u, l, t, space, s, e, t, t, i, n, g, s, 
+	space, l, o, a, d, e, d, figs, period, cr, lf, ltrs,
+	-1
+};
+
 const symbol_t SBF_MEM_ERROR[] = {
 	cr, lf, ltrs, m, e, m, o, r, y, space, e, r, r, o, r, figs,
 	comma, ltrs, space, r, e, s, e, t, t, i, n, g, space,
@@ -28,6 +33,8 @@ const symbol_t SBF_MEM_ERROR[] = {
 
 uint8_t majority(Databit d);
 
+void _print_defaults_restored();
+
 void TTY_DelayMS(uint32_t ms);
 void TTY_Delay(float cycles);
 void TTY_Startbit();
@@ -36,18 +43,22 @@ void TTY_Stopbit();
 void setTTY(uint8_t state);
 symbol_t readTTY();
 
-void setReadError();
-void clearReadError();
-
 // -----------------------------------------------------------------
 
 void TTY_Init(void){
+
+	TO_readTTY_Object(&tty);	// read default config from RAM
+	if (tty.loadState != TO_VER1_0) {
+		TO_storeDefault();
+		_print_default_restored();
+	}
+
 	// this loads the contents from flash and sets the variables
 	for (uint16_t i = 0 ; i < SBF_MAIN_SIZE; i++){
 		sbf_main[i] = SBF_TERMINATOR;
 		if (i < STR_MAIN_SIZE) str_main[i] = '\0';
 	}
-	currentLine = sbf_main;
+
 	TTY_WriteSymbol(ltrs);
 	
 }
@@ -171,24 +182,7 @@ symbol_t readSymbol() {
 }
 
 // === System Functions ============================================
-void TTY_raiseMemoryError(void){	// Deprecate that one
-	/* Oh no. you managed to see this :c
-	 * I'm very sorry for seeing that you got a Memory error.
-	 * This function get Called when your Heap is full/corrupted
-	 *
-	 * 1. Send SBF_MEM_ERROR[], symbol by symbol
-	 * 2. Reset CPU
-	 * 3. Hope for the best
-	 */
-	emerg_cnt = 0;
-	while(SBF_MEM_ERROR[emerg_cnt] != SBF_TERMINATOR){
-		TTY_WriteSymbol(SBF_MEM_ERROR[emerg_cnt]);
-		emerg_cnt++;
-	}
-	system_restart();	// REBOOT CPU
-}
-
-void setTTY(uint8_t state){			// TTY @ D5
+void setTTY(uint8_t state){
 	digitalWrite(tty.TTY_SEND, 
 		state ? HIGH : LOW);
 }
@@ -197,11 +191,11 @@ int8_t readTTY(){
 	int8_t out = -1;
 	out =  digitalRead(tty.TTY_RECV) ?	// invert high/low for this chip
          HIGH : LOW;
-	if (tty.loopback != 0) setTTY(out);
+	if (tty.loopback == LOOPBACK_NORM) setTTY(out);
 	return out;
 }
 
-void setLoopback(uint8_t _loopback) {tty.loopback = _loopback;}
+void setLoopback(loopback_mode_t _loopback) {tty.loopback = _loopback;}
 void setBaudrate(float baudrate) {tty.baudrate = baudrate;}
 void setTermWidth(uint8_t termwidth) {tty.linewidth = termwidth;}
 void setStopbits(float stopbit) {tty.stopbit_cnt = stopbit;}
@@ -209,14 +203,14 @@ void setStopbits(float stopbit) {tty.stopbit_cnt = stopbit;}
 
 
 // === Private Functions ===========================================
-
 uint8_t majority(Databit d) {
     return (d.s1 + d.s2 + d.s3) >= 2 ? 1 : 0;
 }
 
-// ReadError-LED
-void setReadError(){ return; }	//FIXME
-void clearReadError(){ return; }//FIXME
+void _print_defaults_restored(){
+	for (uint8_t i = 0; SBF_DEFAULTS_LOADED[i] != SBF_TERMINATOR; i++)
+		TTY_WriteSymbol(SBF_DEFAULTS_LOADED[i]);
+}
 
 // --- Timing ------------------------------------------------------
 void TTY_DelayMS(uint32_t ms){
