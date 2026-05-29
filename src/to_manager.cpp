@@ -3,6 +3,8 @@
 
 #include "to_manager.h"
 
+// rename: Flash-Manager stores: TTY-Object, Terminal-Object & WiFi Settings
+
 void TO_storeDefault() {
 
 	Teletype t;
