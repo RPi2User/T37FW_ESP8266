@@ -37,10 +37,10 @@ typedef enum {
 	UPPERCASE = 1
 } E_lettercase;
 
-typedef struct { //TODO make this uint8_t pls
-    int s1;
-    int s2;
-    int s3;
+typedef struct {
+    uint8_t s1;
+    uint8_t s2;
+    uint8_t s3;
 } Databit;
 
 

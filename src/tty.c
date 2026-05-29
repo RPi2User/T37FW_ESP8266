@@ -47,20 +47,21 @@ symbol_t readTTY();
 
 void TTY_Init(void){
 
+	// this loads the contents from flash and sets the variables
 	TO_readTTY_Object(&tty);	// read default config from RAM
 	if (tty.loadState != TO_VER1_0) {
 		TO_storeDefault();
 		_print_default_restored();
 	}
 
-	// this loads the contents from flash and sets the variables
+	TTY_WriteSymbol(ltrs);
+
+	// old code ----------------------------------------------------
 	for (uint16_t i = 0 ; i < SBF_MAIN_SIZE; i++){
 		sbf_main[i] = SBF_TERMINATOR;
 		if (i < STR_MAIN_SIZE) str_main[i] = '\0';
 	}
 
-	TTY_WriteSymbol(ltrs);
-	
 }
 
 // -----------------------------------------------------------------
@@ -134,6 +135,7 @@ char TTY_ReadKey(){
 }
 
 symbol_t readSymbol() {
+	// TODO: Calc offsets from baudrate
 	// wait for Symbol-Trigger
 	while(1){
 		if (readTTY() == 0) TTY_DelayMS(2);
@@ -159,16 +161,12 @@ symbol_t readSymbol() {
 
 	TTY_DelayMS(5);
 
-
 	uint8_t end = readTTY();
 
-	// Eval Bits
-	if (beg == 0 || end != 0){
-		setReadError();
-		return -1;
-	}
-
-    uint8_t out = 0;
+	if ((beg + end) != 1)
+		return SBF_TERMINATOR;
+    
+	symbol_t out = 0;
 
     if (majority(databit[0]) == 0) out += 1;
     if (majority(databit[1]) == 0) out += 2;
@@ -176,7 +174,8 @@ symbol_t readSymbol() {
     if (majority(databit[3]) == 0) out += 8;
     if (majority(databit[4]) == 0) out += 16;
 
-    clearReadError();
+	if (tty.loopback == LOOPBACK_SLOW)
+		TTY_WriteSymbol(out);
 
     return out;
 }
@@ -194,13 +193,6 @@ int8_t readTTY(){
 	if (tty.loopback == LOOPBACK_NORM) setTTY(out);
 	return out;
 }
-
-void setLoopback(loopback_mode_t _loopback) {tty.loopback = _loopback;}
-void setBaudrate(float baudrate) {tty.baudrate = baudrate;}
-void setTermWidth(uint8_t termwidth) {tty.linewidth = termwidth;}
-void setStopbits(float stopbit) {tty.stopbit_cnt = stopbit;}
-// TODO add Lower/Uppercase "switch"
-
 
 // === Private Functions ===========================================
 uint8_t majority(Databit d) {

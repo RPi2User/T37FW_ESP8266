@@ -15,7 +15,7 @@ void TO_storeDefault() {
     // Serial properties
 	t.baudrate = 45.45f;
 	t.stopbit_cnt = 1.5f;
-	t.loopback = 0;
+	t.loopback = LOOPBACK_NONE;
 
     // printing properties
 	t.linewidth = 69;

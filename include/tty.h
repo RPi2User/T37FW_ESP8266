@@ -21,11 +21,6 @@ void TTY_WriteSymbol(symbol_t _sym);
 char TTY_ReadKey();
 symbol_t readSymbol();
 
-void setLoopback(loopback_mode_t _loopback);
-void setBaudrate(float baudrate);
-void setTermWidth(uint8_t termwidth);
-void setStopbits(float stopbit);
-
 #ifdef __cplusplus
 }
 #endif
