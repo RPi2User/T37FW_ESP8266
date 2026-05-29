@@ -19,6 +19,8 @@ uint32_t sbf_len();
 void sbf_appendSym(symbol_t sym);
 
 // --- CONVERT -----------------------------------------------------
+
+void sbf_advance(symbol_t sym, Teletype* tty);
 int8_t sbf_convertToChar(symbol_t symbol, char* target, char* _newLine, tty_mode_t* current_mode, uint32_t* carriage_pos, uint32_t* last_lf);
 void sbf_charToSymbolBuffer(char _c, tty_mode_t* _currentMode);
 char* sbf_convertToString(sbf_t _inSbf, char* _outStr, uint16_t outSize, char* _newLine);

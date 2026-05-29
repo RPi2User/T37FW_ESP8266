@@ -72,6 +72,16 @@ void TTY_Fox(void){
 
 }
 
+// === Line Editing ================================================
+
+void TTY_moveToPrev(){	// press "cr" twice to activate it
+	for (uint32_t i = 0; sbf_main[i+1] != SBF_TERMINATOR; i++){
+		// "CabcdefghxT" -> *C*arriage is @ 0, we need to put it there "abcdefghCxT"
+			// -> C is ready to overtype our typo 'x' 
+		TTY_WriteSymbol(sbf_main[i]);
+	}
+}
+
 // === WRITE SECTION ===============================================
 void TTY_WriteString(char* str, uint8_t keepStr){
     // MAIN WRITE FUNCTION
@@ -112,6 +122,8 @@ void TTY_WriteSymbol(symbol_t _sym){
     }
 
 	TTY_Stopbit();
+
+	sbf_advance(_sym, &tty);
 }
 // =================================================================
 
@@ -128,6 +140,40 @@ char TTY_ReadKey(){
 
 	int sym = readSymbol();
 	char _out = -1;
+
+	if (sym == ltrs){
+		if (tty.tty_mode != TTY_LETTERS){
+			tty.tty_mode = TTY_LETTERS;
+			sbf_appendSym(sym);
+		}
+		return;	// else discard duplicate symbol
+	}
+
+	if (sym == figs){
+		if (tty.tty_mode != TTY_FIGURES){
+			tty.tty_mode = TTY_FIGURES;
+			sbf_appendSym(sym);
+		}
+		return;
+	}
+
+	if (sym == cr){
+
+		if (tty.carriage_pos != 0){
+			tty.carriage_pos = 0;
+			sbf_appendSym(sym);
+			return;
+		}
+		else {
+			TTY_moveToPrev();	// move carriage to the last typed symbol "xyCz-1" so C can overtype "z"
+			return;
+		}
+	}
+
+	sbf_advance(sym, &tty);
+	
+	// old stuff:
+	
 	sbf_convertToChar(sym, &_out, "\r\n",
 		&tty.tty_mode, &tty.carriage_pos, &tty.last_linefeed);	// make that one accept the tty struct
 

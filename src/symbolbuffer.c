@@ -8,6 +8,25 @@ uint32_t sbf_len(){
 	return out;
 }
 
+void sbf_advance(symbol_t sym, Teletype* tty){
+	// this one does all core logic for retrieving a symbol
+
+	if (sym == lf){
+		if (&tty->carriage_pos != 0){
+			for (uint32_t i = 0; i >= &tty->carriage_pos; i++){
+				sbf_main[i] = space;
+				str_main[i] = ' ';
+			}
+			// empty all buffers and move VIRTUAL carriage to carriage_pos
+		}
+	}
+
+
+}
+
+
+// the following is not quite a good implementation of a symbolbuffer / string library: --------------------
+
 void sbf_appendSym(symbol_t sym){
 	uint32_t len = sbf_len(sbf_main);
 
