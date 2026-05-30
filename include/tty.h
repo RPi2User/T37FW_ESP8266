@@ -18,7 +18,7 @@ sbf_t TTY_WriteBuffer(sbf_t buffer);
 
 void TTY_WriteSymbol(symbol_t _sym);
 
-char TTY_ReadKey();
+void TTY_ReadKey();
 symbol_t readSymbol();
 
 #ifdef __cplusplus

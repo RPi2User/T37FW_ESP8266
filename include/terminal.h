@@ -31,6 +31,8 @@ typedef struct {
     uint8_t stopbits;   // 1 or 2
 } Terminal;
 
+void TERM_sendLineTerm();
+
 #ifdef __cplusplus
 }
 #endif

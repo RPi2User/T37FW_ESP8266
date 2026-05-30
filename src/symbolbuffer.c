@@ -12,14 +12,23 @@ void sbf_advance(symbol_t sym, Teletype* tty){
 	// this one does all core logic for retrieving a symbol
 
 	if (sym == lf){
-		if (&tty->carriage_pos != 0){
-			for (uint32_t i = 0; i >= &tty->carriage_pos; i++){
+		if (tty->carriage_pos != 0){
+			// TEST: last true key gets cleared
+			for (uint32_t i = 0; i <= tty->carriage_pos; i++){
 				sbf_main[i] = space;
 				str_main[i] = ' ';
 			}
-			// empty all buffers and move VIRTUAL carriage to carriage_pos
 		}
+		else {
+			TERM_sendLineTerm();
+			sbf_main[0] = SBF_TERMINATOR;	// kill buffers
+			str_main[0] = '\0';
+		}
+		return;
 	}
+
+	if (sym != enq)
+		tty->carriage_pos++;
 
 
 }

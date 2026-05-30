@@ -122,8 +122,6 @@ void TTY_WriteSymbol(symbol_t _sym){
     }
 
 	TTY_Stopbit();
-
-	sbf_advance(_sym, &tty);
 }
 // =================================================================
 
@@ -136,10 +134,23 @@ void TTY_WriteSymbol(symbol_t _sym){
  *	- TTY_ReadKey() is the main function, this reads a single Symbol
  *				    and converts it into a char
  */
-char TTY_ReadKey(){
+void TTY_ReadKey(){
+	// This one processes all symbols that can be processed without contextual data
 
-	int sym = readSymbol();
+	symbol_t sym = readSymbol();
+	uint8_t editor_enabled = 0;
 	char _out = -1;
+
+	if (sym == null || sym == SBF_TERMINATOR) 
+		return; // discard illegal symbols
+
+
+	if (sym == lf && editor_enabled != 0)
+		editor_enabled = 0;
+
+	if (sym == space && editor_enabled != 0){
+		// advace carriage by one known symbol
+	}
 
 	if (sym == ltrs){
 		if (tty.tty_mode != TTY_LETTERS){
@@ -165,19 +176,14 @@ char TTY_ReadKey(){
 			return;
 		}
 		else {
+			editor_enabled = 1;
+			// first cr: do cr, second: enable edit mode (advance with spaces) third: goto sbf_main[-2]
 			TTY_moveToPrev();	// move carriage to the last typed symbol "xyCz-1" so C can overtype "z"
 			return;
 		}
 	}
 
 	sbf_advance(sym, &tty);
-	
-	// old stuff:
-	
-	sbf_convertToChar(sym, &_out, "\r\n",
-		&tty.tty_mode, &tty.carriage_pos, &tty.last_linefeed);	// make that one accept the tty struct
-
-	return _out;
 }
 
 symbol_t readSymbol() {
