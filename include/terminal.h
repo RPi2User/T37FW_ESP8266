@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-const char LINETERM[4] = {'\r', '\n', '\r', 0x15};
+const char TERM_LINETERM[4] = {'\r', '\n', '\r', 0x15};
 
 typedef enum {
     LT_CRLF = 0,
@@ -30,6 +30,8 @@ typedef struct {
     uint8_t parity;     // 0 = none, 1 = odd, 2 = even
     uint8_t stopbits;   // 1 or 2
 } Terminal;
+
+void TERM_sendHome();
 
 void TERM_sendLineTerm();
 

@@ -5,7 +5,6 @@
  *      Author: florian
  */
 #include "tty_types.h"
-#include "terminal.h"
 
 #ifndef INC_SYMBOLBUFFER_H_
 #define INC_SYMBOLBUFFER_H_

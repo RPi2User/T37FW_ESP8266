@@ -30,6 +30,7 @@ void sbf_advance(symbol_t sym, Teletype* tty){
 	if (sym != enq)
 		tty->carriage_pos++;
 
+	sbf_appendSym(sym);
 
 }
 

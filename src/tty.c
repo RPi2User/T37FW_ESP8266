@@ -16,6 +16,13 @@ uint8_t READ_TIMEOUT = 100;	// Timeout of 1000ms
 
 char* fox = "\r\nthe quick brown fox jumps over the lazy dog";
 
+const symbol_t SBF_FOX[] = {
+	cr, lf, ltrs, t, h, e, space, q, u, i, c, k, space,
+	b, r, o, w, n, space, f, o, x, space, j, u, m, p, s, space,
+	o, v, e, r, space, t, h, e, space, l, a, z, y, space,
+	d, o, g, -1
+};
+
 const symbol_t SBF_DEFAULTS_LOADED[] = {
 	cr, lf, figs, bell, ltrs, 
 	d, e, f, a, u, l, t, space, s, e, t, t, i, n, g, s, 
@@ -44,9 +51,32 @@ void setTTY(uint8_t state);
 symbol_t readTTY();
 
 // -----------------------------------------------------------------
-
 void TTY_Init(void){
 
+	tty.TTY_SEND = D5;
+	tty.TTY_RECV = D0;
+	tty.TTY_READ_INHIBIT = D1;
+
+    // Serial properties
+	tty.baudrate = 50.0f;
+	tty.stopbit_cnt = 1.5f;
+	tty.loopback = LOOPBACK_NONE;
+
+    // printing properties
+	tty.linewidth = 69;
+	tty.lettercase = LOWERCASE;
+	tty.tty_mode = TTY_LETTERS;
+	tty.tabWidth = 2;
+	tty.last_linefeed = 0;
+	tty.carriage_pos = 0;
+
+    // Firmware check
+	tty.loadState = TO_VER1_0;
+
+	TTY_WriteSymbol(ltrs);
+	TTY_Fox();
+	TTY_SlowLoopback();
+	return;
 	// this loads the contents from flash and sets the variables
 	TO_readTTY_Object(&tty);	// read default config from RAM
 	if (tty.loadState != TO_VER1_0) {
@@ -54,61 +84,23 @@ void TTY_Init(void){
 		_print_default_restored();
 	}
 
-	TTY_WriteSymbol(ltrs);
 
-	// old code ----------------------------------------------------
-	for (uint16_t i = 0 ; i < SBF_MAIN_SIZE; i++){
-		sbf_main[i] = SBF_TERMINATOR;
-		if (i < STR_MAIN_SIZE) str_main[i] = '\0';
-	}
 
 }
 
 // -----------------------------------------------------------------
-// Debug function prints a brown fox
+// Debug functions
 void TTY_Fox(void){
-
-	TTY_WriteString(fox, 1);
-
+	for (uint8_t i = 0; SBF_FOX[i] != SBF_TERMINATOR; i++)
+		TTY_WriteSymbol(SBF_FOX[i]);
 }
 
-// === Line Editing ================================================
-
-void TTY_moveToPrev(){	// press "cr" twice to activate it
-	for (uint32_t i = 0; sbf_main[i+1] != SBF_TERMINATOR; i++){
-		// "CabcdefghxT" -> *C*arriage is @ 0, we need to put it there "abcdefghCxT"
-			// -> C is ready to overtype our typo 'x' 
-		TTY_WriteSymbol(sbf_main[i]);
-	}
+void TTY_SlowLoopback(void){
+	while(1)
+		TTY_WriteSymbol(readSymbol());
 }
 
-// === WRITE SECTION ===============================================
-void TTY_WriteString(char* str, uint8_t keepStr){
-    // MAIN WRITE FUNCTION
-    // keepStr is used when you don't want to clear a constant
-	(void)keepStr;
-	sbf_convertToSymbolBuffer(str, sbf_main);
-	sbf_convertToString(sbf_main, str_main, STR_MAIN_SIZE, "\r\n");
-	TTY_WriteBuffer(sbf_main);
-}
-
-void TTY_WriteKey(char key){
-	sbf_charToSymbolBuffer(key, &tty.tty_mode);
-	TTY_WriteBuffer(sbf_main);
-}
-
-sbf_t TTY_WriteBuffer(sbf_t buffer){
-	if (buffer == NULL) {
-		return NULL;
-	}
-
-    // Write all symbols in buffer
-	for (uint16_t i = 0; buffer[i] != SBF_TERMINATOR; i++) {
-        TTY_WriteSymbol(buffer[i]);
-    }
-
-	return buffer;
-}
+// -----------------------------------------------------------------
 
 void TTY_WriteSymbol(symbol_t _sym){
 	if (_sym == -1) return;
@@ -138,15 +130,16 @@ void TTY_ReadKey(){
 	// This one processes all symbols that can be processed without contextual data
 
 	symbol_t sym = readSymbol();
+	sbf_appendSym(sym);
+
 	uint8_t editor_enabled = 0;
-	char _out = -1;
 
 	if (sym == null || sym == SBF_TERMINATOR) 
 		return; // discard illegal symbols
 
 
 	if (sym == lf && editor_enabled != 0)
-		editor_enabled = 0;
+		editor_enabled = 0;	// close single line editor mode
 
 	if (sym == space && editor_enabled != 0){
 		// advace carriage by one known symbol
@@ -170,6 +163,9 @@ void TTY_ReadKey(){
 
 	if (sym == cr){
 
+		if (tty.carriage_pos != 0 && editor_enabled == 1)
+			TTY_moveToPrev();	// third time cr -> move to prev
+
 		if (tty.carriage_pos != 0){
 			tty.carriage_pos = 0;
 			sbf_appendSym(sym);
@@ -178,6 +174,7 @@ void TTY_ReadKey(){
 		else {
 			editor_enabled = 1;
 			// first cr: do cr, second: enable edit mode (advance with spaces) third: goto sbf_main[-2]
+			TERM_sendHome();
 			TTY_moveToPrev();	// move carriage to the last typed symbol "xyCz-1" so C can overtype "z"
 			return;
 		}
