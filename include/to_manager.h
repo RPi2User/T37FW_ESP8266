@@ -11,6 +11,8 @@ extern "C" {
 void TO_storeDefault();
 void TO_storeTTY_Object(const Teletype* t);
 void TO_readTTY_Object(Teletype* t);
+void TO_storeTerminal_Object(const Terminal* t);
+void TO_readTerminal_Object(Terminal* t);
 
 #ifdef __cplusplus
 }

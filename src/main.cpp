@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include "tty.h"
+#include "terminal.h"
 
 #define TTY_RECV D0  //orange
 #define TTY_SEND D5  // 
@@ -15,17 +16,15 @@
 
 void setup() {
    pinMode(TTY_RECV, INPUT);
-   pinMode(SER_RX, INPUT);
    pinMode(BOOTY, INPUT);
 
    pinMode(TTY_SEND, OUTPUT);
-   pinMode(SER_TX, OUTPUT);
-   pinMode(SER_CTS, OUTPUT);
    pinMode(TTY_INHIBIT, OUTPUT);
 
    pinMode(LED_BUILTIN, OUTPUT);
 
    TTY_Init();
+   TERM_Init();
 
 
    //softSerial.begin(9600);
