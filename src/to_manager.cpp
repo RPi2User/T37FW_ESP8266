@@ -19,7 +19,7 @@ void TO_storeDefault() {
 	t.TTY_READ_INHIBIT = D1;
 
     // Serial properties
-	t.baudrate = 45.45f;
+	t.baudrate = 50.0f;
 	t.stopbit_cnt = 1.5f;
 	t.loopback = LOOPBACK_NONE;
 
@@ -28,6 +28,7 @@ void TO_storeDefault() {
 	t.lettercase = LOWERCASE;
 	t.tty_mode = TTY_LETTERS;
 	t.tabWidth = 2;
+	t.len_autoNewLineIndent = 1;
 	t.last_linefeed = 0;
 	t.carriage_pos = 0;
 

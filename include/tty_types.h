@@ -67,6 +67,7 @@ typedef struct {
 	uint8_t linewidth;
 	E_lettercase lettercase;
 	uint8_t tabWidth;
+	uint8_t len_autoNewLineIndent;
 	tty_mode_t tty_mode;
 
 	// state vars

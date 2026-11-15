@@ -60,13 +60,14 @@ void TTY_Init(void){
     // Serial properties
 	tty.baudrate = 50.0f;
 	tty.stopbit_cnt = 1.5f;
-	tty.loopback = LOOPBACK_NONE;
+	tty.loopback = LOOPBACK_NORM;
 
     // printing properties
 	tty.linewidth = 69;
 	tty.lettercase = LOWERCASE;
 	tty.tty_mode = TTY_LETTERS;
 	tty.tabWidth = 2;
+	tty.len_autoNewLineIndent = 1;
 	tty.last_linefeed = 0;
 	tty.carriage_pos = 0;
 
@@ -74,8 +75,6 @@ void TTY_Init(void){
 	tty.loadState = TO_VER1_0;
 
 	TTY_WriteSymbol(ltrs);
-	TTY_Fox();
-	TTY_SlowLoopback();
 	return;
 	// this loads the contents from flash and sets the variables
 	TO_readTTY_Object(&tty);	// read default config from RAM
@@ -84,8 +83,6 @@ void TTY_Init(void){
 		_print_default_restored();
 	}
 
-
-
 }
 
 // -----------------------------------------------------------------
@@ -93,11 +90,6 @@ void TTY_Init(void){
 void TTY_Fox(void){
 	for (uint8_t i = 0; SBF_FOX[i] != SBF_TERMINATOR; i++)
 		TTY_WriteSymbol(SBF_FOX[i]);
-}
-
-void TTY_SlowLoopback(void){
-	while(1)
-		TTY_WriteSymbol(readSymbol());
 }
 
 // -----------------------------------------------------------------
@@ -126,23 +118,27 @@ void TTY_WriteSymbol(symbol_t _sym){
  *	- TTY_ReadKey() is the main function, this reads a single Symbol
  *				    and converts it into a char
  */
-void TTY_ReadKey(){
+void TTY_ReadKey(uint8_t max_wait_bits){
 	// This one processes all symbols that can be processed without contextual data
 
-	symbol_t sym = readSymbol();
+	symbol_t sym = readSymbol(max_wait_bits);
+
+	if (sym == SBF_TERMINATOR)
+		return; // no key within this cycle's window - normal case, do nothing
+
 	sbf_appendSym(sym);
 
 	uint8_t editor_enabled = 0;
 
-	if (sym == null || sym == SBF_TERMINATOR) 
-		return; // discard illegal symbols
+	if (sym == null)
+		return; // discard illegal symbol
 
 
 	if (sym == lf && editor_enabled != 0)
 		editor_enabled = 0;	// close single line editor mode
 
 	if (sym == space && editor_enabled != 0){
-		// advace carriage by one known symbol
+		// advance carriage by one known symbol
 	}
 
 	if (sym == ltrs){
@@ -161,7 +157,7 @@ void TTY_ReadKey(){
 		return;
 	}
 
-	if (sym == cr){
+	if (sym == cr){	// BUG: Store carriage position!
 
 		if (tty.carriage_pos != 0 && editor_enabled == 1)
 			TTY_moveToPrev();	// third time cr -> move to prev
@@ -183,12 +179,19 @@ void TTY_ReadKey(){
 	sbf_advance(sym, &tty);
 }
 
-symbol_t readSymbol() {
+symbol_t readSymbol(uint8_t max_wait_bits) {
 	// TODO: Calc offsets from baudrate
-	// wait for Symbol-Trigger
-	while(1){
-		if (readTTY() == 0) TTY_DelayMS(2);
-		else break;
+	// wait for Symbol-Trigger, but only for max_wait_bits bit-periods.
+	// A caller-driven scheduler needs this call to return promptly when
+	// the operator simply isn't typing. Edge detection itself must stay
+	// fine-grained (a few ms) - polling in whole bit-periods (20ms @ 50Bd)
+	// makes the detected edge jitter by up to a full bit, which throws off
+	// every fixed-offset sample taken further down.
+	const uint32_t POLL_MS = 2;
+	uint32_t max_wait_ms = (uint32_t)(max_wait_bits * (1000.0f / tty.baudrate));
+	for (uint32_t waited_ms = 0; readTTY() == 0; waited_ms += POLL_MS){
+		if (waited_ms >= max_wait_ms) return SBF_TERMINATOR;
+		TTY_DelayMS(POLL_MS);
 	}
 	// read start-bit
 	// pattern: 20ms startbit, 5x20ms Databit, 1.n stopbits
@@ -246,6 +249,10 @@ int8_t readTTY(){
 // === Private Functions ===========================================
 uint8_t majority(Databit d) {
     return (d.s1 + d.s2 + d.s3) >= 2 ? 1 : 0;
+}
+
+void TTY_moveToPrev(){
+	return;	// TODO
 }
 
 void _print_defaults_restored(){

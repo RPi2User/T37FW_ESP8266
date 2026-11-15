@@ -4,6 +4,7 @@
 #include "to_manager.h"
 
 static Terminal term;
+static uint8_t term_cts_ready = 0;	// mirrors the last state requested via TERM_setCTS()
 
 const char TERM_LINETERM[4] = {'\r', '\n', '\r', '\n'};
 
@@ -27,18 +28,20 @@ void TERM_Init(void) {
 		TO_storeTerminal_Object(&term);
 	}
 
-	pinMode(term.SER_RX, INPUT);
-	pinMode(term.SER_TX, OUTPUT);
-	pinMode(term.SER_CTS, OUTPUT);
-	pinMode(term.BOOTY, INPUT);
 	digitalWrite(term.SER_TX, HIGH);
-	digitalWrite(term.SER_CTS, HIGH);
+	TERM_setCTS(0);	// not ready until the automaton says otherwise
+}
+
+void TERM_setCTS(uint8_t ready) {
+	term_cts_ready = ready ? 1 : 0;
+	digitalWrite(term.SER_CTS, term_cts_ready ? HIGH : LOW);
 }
 
 void TERM_write(uint8_t c) {
 	uint32_t d = TERM_bitDelay();
+	uint8_t was_ready = term_cts_ready;
 
-	digitalWrite(term.SER_CTS, LOW);
+	TERM_setCTS(0);	// we're driving TX ourselves, terminal must hold off
 	digitalWrite(term.SER_TX, LOW);
 	delayMicroseconds(d);
 
@@ -49,12 +52,16 @@ void TERM_write(uint8_t c) {
 
 	digitalWrite(term.SER_TX, HIGH);
 	delayMicroseconds(d * term.stopbits);
-	digitalWrite(term.SER_CTS, HIGH);
+	TERM_setCTS(was_ready);	// restore whatever the automaton had requested
 }
 
-int8_t TERM_read(void) {
+int16_t TERM_read(uint8_t max_wait_bits) {
 	uint32_t d = TERM_bitDelay();
-	while (digitalRead(term.SER_RX)) {}
+
+	for (uint8_t waited = 0; digitalRead(term.SER_RX); waited++){
+		if (waited >= max_wait_bits) return -1;	// nothing sent - normal case
+		delayMicroseconds(d);
+	}
 
 	delayMicroseconds(d + (d / 2));
 
@@ -65,7 +72,7 @@ int8_t TERM_read(void) {
 	}
 
 	delayMicroseconds(d);
-	return (int8_t)c;
+	return (int16_t)c;
 }
 
 void TERM_sendHome() {

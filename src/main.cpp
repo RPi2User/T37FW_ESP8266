@@ -2,6 +2,7 @@
 #include <SoftwareSerial.h>
 #include "tty.h"
 #include "terminal.h"
+#include "stateMachine.h"
 
 #define TTY_RECV D0  //orange
 #define TTY_SEND D5  // 
@@ -15,17 +16,19 @@
 
 
 void setup() {
-   pinMode(TTY_RECV, INPUT);
-   pinMode(BOOTY, INPUT);
-
+   pinMode(LED_BUILTIN, OUTPUT);
    pinMode(TTY_SEND, OUTPUT);
    pinMode(TTY_INHIBIT, OUTPUT);
+   pinMode(SER_TX, OUTPUT);
+   pinMode(SER_CTS, OUTPUT);
 
-   pinMode(LED_BUILTIN, OUTPUT);
+   pinMode(TTY_RECV, INPUT);
+   pinMode(SER_RX, INPUT);
+   pinMode(BOOTY, INPUT);
 
    TTY_Init();
    TERM_Init();
-
+   SM_Init();
 
    //softSerial.begin(9600);
    //delay(100);
@@ -36,6 +39,6 @@ void setup() {
    // put your setup code here, to run once:
 }
 
-void loop() { 
-
+void loop() {
+   SM_Run();
 }

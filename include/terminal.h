@@ -40,7 +40,16 @@ typedef struct {
 void TERM_Init(void);
 
 void TERM_write(uint8_t c);
-int8_t TERM_read(void);
+
+// max_wait_bits: how many bit-periods to poll for a start-bit before giving
+// up for this cycle. Returns -1 on timeout (normal case: nothing sent).
+int16_t TERM_read(uint8_t max_wait_bits);
+
+// Single point of control for the CTS line. ready=1 tells the terminal it
+// may send; ready=0 tells it to hold off (e.g. we're still draining the
+// print queue). TERM_write() temporarily pulls CTS low while transmitting
+// and restores whatever TERM_setCTS() last requested.
+void TERM_setCTS(uint8_t ready);
 
 void TERM_sendHome();
 
