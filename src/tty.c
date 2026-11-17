@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "Arduino.h"
 #include "tty.h"
+#include "terminal.h"
+#include "to_manager.h"
 #include "symbolbuffer.h"
 
 Teletype tty;
@@ -33,7 +35,7 @@ const symbol_t SBF_DEFAULTS_LOADED[] = {
 const symbol_t SBF_MEM_ERROR[] = {
 	cr, lf, ltrs, m, e, m, o, r, y, space, e, r, r, o, r, figs,
 	comma, ltrs, space, r, e, s, e, t, t, i, n, g, space,
-	c, p, u, figs, period, bell, bell, bell, bell, bell, -1
+	c, p, u, figs, period, bell, bell, bell, bell, bell, ltrs, -1
 };
 
 // --- private function definitions --------------------------------
@@ -41,6 +43,8 @@ const symbol_t SBF_MEM_ERROR[] = {
 uint8_t majority(Databit d);
 
 void _print_defaults_restored();
+void TTY_moveToPrev();
+void TTY_applyPins();
 
 void TTY_DelayMS(uint32_t ms);
 void TTY_Delay(float cycles);
@@ -52,44 +56,45 @@ symbol_t readTTY();
 
 // -----------------------------------------------------------------
 void TTY_Init(void){
+	// Defaults only - the EEPROM is not touched before the boot prompt
+	// has timed out (see BOOTY_Boot).
+	TO_defaultTTY(&tty);
+	TTY_applyPins();
+	setTTY(0);	// line idle
+}
 
-	tty.TTY_SEND = D5;
-	tty.TTY_RECV = D0;
-	tty.TTY_READ_INHIBIT = D1;
+void TTY_LoadConfig(void){
+	Teletype loaded;
+	TO_readTTY_Object(&loaded);
 
-    // Serial properties
-	tty.baudrate = 50.0f;
-	tty.stopbit_cnt = 1.5f;
-	tty.loopback = LOOPBACK_NORM;
-
-    // printing properties
-	tty.linewidth = 69;
-	tty.lettercase = LOWERCASE;
-	tty.tty_mode = TTY_LETTERS;
-	tty.tabWidth = 2;
-	tty.len_autoNewLineIndent = 1;
-	tty.last_linefeed = 0;
-	tty.carriage_pos = 0;
-
-    // Firmware check
-	tty.loadState = TO_VER1_0;
-
-	TTY_WriteSymbol(ltrs);
-	return;
-	// this loads the contents from flash and sets the variables
-	TO_readTTY_Object(&tty);	// read default config from RAM
-	if (tty.loadState != TO_VER1_0) {
+	if (loaded.loadState != TO_VER1_0) {
 		TO_storeDefault();
-		_print_default_restored();
+		TO_defaultTTY(&tty);
+		TTY_applyPins();
+		_print_defaults_restored();
+	}
+	else {
+		tty = loaded;
+		TTY_applyPins();
 	}
 
+	// runtime state never comes from flash: the keyboard mechanics
+	// always start in LTRS, so do we.
+	tty.tty_mode = TTY_LETTERS;
+	tty.carriage_pos = 0;
+	tty.last_linefeed = 0;
+}
+
+void TTY_applyPins(){
+	pinMode(tty.TTY_SEND, OUTPUT);
+	pinMode(tty.TTY_READ_INHIBIT, OUTPUT);
+	pinMode(tty.TTY_RECV, INPUT);
 }
 
 // -----------------------------------------------------------------
 // Debug functions
 void TTY_Fox(void){
-	for (uint8_t i = 0; SBF_FOX[i] != SBF_TERMINATOR; i++)
-		TTY_WriteSymbol(SBF_FOX[i]);
+	TTY_WriteSbf(SBF_FOX);
 }
 
 // -----------------------------------------------------------------
@@ -106,6 +111,11 @@ void TTY_WriteSymbol(symbol_t _sym){
     }
 
 	TTY_Stopbit();
+}
+
+void TTY_WriteSbf(const symbol_t* _sbf){
+	for (uint16_t i = 0; _sbf[i] != SBF_TERMINATOR; i++)
+		TTY_WriteSymbol(_sbf[i]);
 }
 // =================================================================
 
@@ -256,8 +266,7 @@ void TTY_moveToPrev(){
 }
 
 void _print_defaults_restored(){
-	for (uint8_t i = 0; SBF_DEFAULTS_LOADED[i] != SBF_TERMINATOR; i++)
-		TTY_WriteSymbol(SBF_DEFAULTS_LOADED[i]);
+	TTY_WriteSbf(SBF_DEFAULTS_LOADED);
 }
 
 // --- Timing ------------------------------------------------------

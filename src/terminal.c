@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "terminal.h"
+#include "tty.h"
 #include "to_manager.h"
 
 static Terminal term;
@@ -12,29 +13,35 @@ static uint32_t TERM_bitDelay(void) {
 	return (uint32_t)(1000000.0f / term.baudrate);
 }
 
-void TERM_Init(void) {
-	TO_readTerminal_Object(&term);
-	if (term.loadState != TO_VER1_0) {
-		term.SER_RX = D6;
-		term.SER_TX = D7;
-		term.SER_CTS = D8;
-		term.BOOTY = D2;
-		term.lineTerm = LT_CRLF;
-		term.baudrate = 9600.0f;
-		term.wordwidth = 8;
-		term.parity = 0;
-		term.stopbits = 1;
-		term.loadState = TO_VER1_0;
-		TO_storeTerminal_Object(&term);
-	}
+static void TERM_applyPins(void) {
+	pinMode(term.SER_TX, OUTPUT);
+	pinMode(term.SER_CTS, OUTPUT);
+	pinMode(term.SER_RX, INPUT);
 
 	digitalWrite(term.SER_TX, HIGH);
 	TERM_setCTS(0);	// not ready until the automaton says otherwise
 }
 
+void TERM_Init(void) {
+	// Defaults only - the EEPROM is not touched before the boot prompt
+	// has timed out (see BOOTY_Boot).
+	TO_defaultTerminal(&term);
+	TERM_applyPins();
+}
+
+void TERM_LoadConfig(void) {
+	TO_readTerminal_Object(&term);
+	if (term.loadState != TO_VER1_0) {
+		TO_defaultTerminal(&term);
+		TO_storeTerminal_Object(&term);
+	}
+	TERM_applyPins();
+}
+
 void TERM_setCTS(uint8_t ready) {
 	term_cts_ready = ready ? 1 : 0;
 	digitalWrite(term.SER_CTS, term_cts_ready ? HIGH : LOW);
+	digitalWrite(tty.TTY_READ_INHIBIT, term_cts_ready ? LOW : HIGH);	// INHIBIT = NOT-CTS
 }
 
 void TERM_write(uint8_t c) {

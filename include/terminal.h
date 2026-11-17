@@ -27,7 +27,7 @@ typedef struct {
     uint8_t SER_RX;
     uint8_t SER_TX;
     uint8_t SER_CTS;
-    uint8_t BOOTY;
+    uint8_t _reserved;  // was the BOOTY pin (obsolete); keeps the EEPROM layout
 
     LineTerm_T lineTerm;
     uint32_t baudrate;
@@ -37,7 +37,13 @@ typedef struct {
     E_InitState loadState;
 } Terminal;
 
+// Compiled-in defaults only, no EEPROM access. Call after TTY_Init():
+// TERM_setCTS() also drives the operator's INHIBIT LED on the TTY side.
 void TERM_Init(void);
+
+// Reads the Terminal object from EEPROM (stores defaults if it is missing
+// or from another version).
+void TERM_LoadConfig(void);
 
 void TERM_write(uint8_t c);
 
@@ -49,6 +55,9 @@ int16_t TERM_read(uint8_t max_wait_bits);
 // may send; ready=0 tells it to hold off (e.g. we're still draining the
 // print queue). TERM_write() temporarily pulls CTS low while transmitting
 // and restores whatever TERM_setCTS() last requested.
+//
+// The operator's INHIBIT LED is NOT-CTS and is driven from here as well,
+// nowhere else.
 void TERM_setCTS(uint8_t ready);
 
 void TERM_sendHome();
