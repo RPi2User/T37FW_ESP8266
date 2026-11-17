@@ -1,42 +1,26 @@
 #include <Arduino.h>
-#include <SoftwareSerial.h>
 #include "tty.h"
 #include "terminal.h"
+#include "booty.h"
 #include "stateMachine.h"
 
-#define TTY_RECV D0  //orange
-#define TTY_SEND D5  // 
-#define SER_RX D6
-#define SER_TX D7
-#define SER_CTS D8
-#define TTY_INHIBIT D1
-#define BOOTY D2
-
-//SoftwareSerial softSerial(D6, D5, 1); // RX, TX
-
+// Pin assignment lives in the Teletype/Terminal objects (defaults in
+// to_manager.cpp); each module sets up its own pins.
+//
+//   TTY_RECV    D0  (orange)
+//   TTY_INHIBIT D1  (operator LED, NOT-CTS)
+//   TTY_SEND    D5
+//   SER_RX      D6
+//   SER_TX      D7
+//   SER_CTS     D8
 
 void setup() {
    pinMode(LED_BUILTIN, OUTPUT);
-   pinMode(TTY_SEND, OUTPUT);
-   pinMode(TTY_INHIBIT, OUTPUT);
-   pinMode(SER_TX, OUTPUT);
-   pinMode(SER_CTS, OUTPUT);
 
-   pinMode(TTY_RECV, INPUT);
-   pinMode(SER_RX, INPUT);
-   pinMode(BOOTY, INPUT);
-
-   TTY_Init();
-   TERM_Init();
+   TTY_Init();    // defaults, line idle
+   TERM_Init();   // defaults, CTS low (must come after TTY_Init)
+   BOOTY_Boot();  // prompt, 5s window, EEPROM objects, RDY
    SM_Init();
-
-   //softSerial.begin(9600);
-   //delay(100);
-   //softSerial.write('A');
-
-   //TTY_Fox();
-   //setLoopback(1);
-   // put your setup code here, to run once:
 }
 
 void loop() {
