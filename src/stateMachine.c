@@ -46,7 +46,6 @@ static int16_t sm_pq_pop(void) {
 // --- READ ----------------------------------------------------------------
 
 static void sm_state_readTTY(void) {
-	digitalWrite(tty.TTY_READ_INHIBIT, LOW);	// we're the reader now
 	TTY_ReadKey(SM_TTY_POLL_BITS);			// timeout -> no-op, that's fine
 }
 
@@ -89,7 +88,7 @@ static void sm_state_writeSer(void) {
 static void sm_state_writeTTY(void) {
 	if (sm_pq_count() == 0) return;	// nothing queued - normal case
 
-	digitalWrite(tty.TTY_READ_INHIBIT, HIGH);	// we're driving TX now
+	// The INHIBIT LED is NOT-CTS and handled by TERM_setCTS() only.
 
 	int16_t c = sm_pq_pop();
 	if (c >= 0) {
@@ -100,7 +99,12 @@ static void sm_state_writeTTY(void) {
 			TTY_WriteSymbol(sbf_main[i]);
 	}
 
-	digitalWrite(tty.TTY_READ_INHIBIT, LOW);
+	// Backlog drained: always leave the data stream in LTRS - that is
+	// the state the keyboard mechanics are in.
+	if (sm_pq_count() == 0 && tty.tty_mode != TTY_LETTERS) {
+		TTY_WriteSymbol(ltrs);
+		tty.tty_mode = TTY_LETTERS;
+	}
 }
 
 // ---------------------------------------------------------------------------
